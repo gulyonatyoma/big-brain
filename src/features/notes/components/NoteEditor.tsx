@@ -10,12 +10,29 @@ type NoteEditorProps = {
 type SaveStatus = 'idle' | 'waiting' | 'saving' | 'saved' | 'error'
 
 function NoteEditor({ selectedNoteId }: NoteEditorProps) {
-  const note = useLiveQuery(async () => {
+  const noteData = useLiveQuery(async () => {
     if (!selectedNoteId) {
-      return undefined
+      return null
     }
 
-    return db.notes.get(selectedNoteId)
+    const note = await db.notes.get(selectedNoteId)
+
+    if (!note) {
+      return {
+        note: undefined,
+        content: '',
+      }
+    }
+
+    const noteContent = await db.noteContents
+      .where('noteId')
+      .equals(selectedNoteId)
+      .first()
+
+    return {
+      note,
+      content: noteContent?.content ?? '',
+    }
   }, [selectedNoteId])
 
   const [title, setTitle] = useState('')
@@ -28,7 +45,7 @@ function NoteEditor({ selectedNoteId }: NoteEditorProps) {
   const savedStatusTimeoutRef = useRef<number | null>(null)
 
   useEffect(() => {
-    if (!note) {
+    if (!noteData?.note) {
       setTitle('')
       setContent('')
       setSaveStatus('idle')
@@ -38,18 +55,18 @@ function NoteEditor({ selectedNoteId }: NoteEditorProps) {
       return
     }
 
-    if (loadedNoteIdRef.current === note.id) {
+    if (loadedNoteIdRef.current === noteData.note.id) {
       return
     }
 
-    loadedNoteIdRef.current = note.id
-    lastSavedTitleRef.current = note.title
-    lastSavedContentRef.current = note.content
+    loadedNoteIdRef.current = noteData.note.id
+    lastSavedTitleRef.current = noteData.note.title
+    lastSavedContentRef.current = noteData.content
 
-    setTitle(note.title)
-    setContent(note.content)
+    setTitle(noteData.note.title)
+    setContent(noteData.content)
     setSaveStatus('idle')
-  }, [note])
+  }, [noteData])
 
   useEffect(() => {
     if (!selectedNoteId || loadedNoteIdRef.current !== selectedNoteId) {
@@ -150,10 +167,18 @@ function NoteEditor({ selectedNoteId }: NoteEditorProps) {
     )
   }
 
-  if (!note) {
+  if (noteData === undefined) {
     return (
       <div className="flex min-h-[540px] items-center justify-center rounded-2xl border border-white/10 bg-white/5 p-8 text-center text-slate-400">
         Загружаем заметку...
+      </div>
+    )
+  }
+
+  if (!noteData?.note) {
+    return (
+      <div className="flex min-h-[540px] items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/5 p-8 text-center text-slate-400">
+        Заметка не найдена. Возможно, она была удалена.
       </div>
     )
   }
