@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router-dom'
+import AuthSessionWatcher from '../../features/auth/components/AuthSessionWatcher'
 import FocusMiniIndicator from '../../features/focus/components/FocusMiniIndicator'
 import EventReminderWatcher from '../../features/notifications/components/EventReminderWatcher'
 import MobileSidebar from './MobileSidebar'
@@ -7,6 +8,8 @@ import Sidebar from './Sidebar'
 function AppLayout() {
   return (
     <div className="min-h-screen bg-transparent text-slate-100">
+      <AuthSessionWatcher />
+
       <MobileSidebar />
 
       <div className="flex min-h-screen">
