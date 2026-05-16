@@ -1,5 +1,7 @@
+import { supabase } from '../../../shared/api/supabaseClient'
 import { db } from '../../../shared/db/db'
 import type { CalendarEvent, EventRepeatType } from '../types'
+import { createCloudEvent, deleteCloudEvent } from './cloud/eventCloudActions'
 
 type CreateEventInput = {
   title: string
@@ -12,7 +14,37 @@ type CreateEventInput = {
   reminderMinutesBefore?: number
 }
 
+async function getAuthenticatedUserId() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  return user?.id ?? null
+}
+
 export async function createCalendarEvent(input: CreateEventInput) {
+  const userId = await getAuthenticatedUserId()
+
+  const repeatType = input.repeatType ?? 'none'
+  const repeatInterval = input.repeatInterval ?? 1
+
+  if (userId) {
+    const cloudEvent = await createCloudEvent({
+      title: input.title,
+      description: input.description,
+      date: input.date,
+      startTime: input.startTime,
+      endTime: input.endTime,
+      repeatType,
+      repeatInterval,
+      reminderMinutesBefore: input.reminderMinutesBefore,
+    })
+
+    await db.events.put(cloudEvent)
+
+    return cloudEvent
+  }
+
   const now = new Date().toISOString()
 
   const event: CalendarEvent = {
@@ -22,8 +54,8 @@ export async function createCalendarEvent(input: CreateEventInput) {
     date: input.date,
     startTime: input.startTime,
     endTime: input.endTime,
-    repeatType: input.repeatType ?? 'none',
-    repeatInterval: input.repeatInterval ?? 1,
+    repeatType,
+    repeatInterval,
     reminderMinutesBefore: input.reminderMinutesBefore,
     createdAt: now,
   }
@@ -34,5 +66,15 @@ export async function createCalendarEvent(input: CreateEventInput) {
 }
 
 export async function deleteCalendarEvent(eventId: string) {
+  const userId = await getAuthenticatedUserId()
+
+  if (userId) {
+    try {
+      await deleteCloudEvent(eventId)
+    } catch (error) {
+      console.warn('Failed to delete cloud event, deleting local event only', error)
+    }
+  }
+
   await db.events.delete(eventId)
 }
