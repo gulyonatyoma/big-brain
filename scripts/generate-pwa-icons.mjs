@@ -1,3 +1,12 @@
+import fs from 'node:fs/promises'
+import path from 'node:path'
+import sharp from 'sharp'
+
+const publicDir = path.resolve('public')
+
+await fs.mkdir(publicDir, { recursive: true })
+
+const iconSvg = `
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect width="512" height="512" rx="112" fill="#0F172A"/>
   <rect x="48" y="48" width="416" height="416" rx="92" fill="url(#paint0_linear)"/>
@@ -15,3 +24,23 @@
     </linearGradient>
   </defs>
 </svg>
+`
+
+await fs.writeFile(path.join(publicDir, 'favicon.svg'), iconSvg.trim())
+
+await sharp(Buffer.from(iconSvg))
+  .resize(192, 192)
+  .png()
+  .toFile(path.join(publicDir, 'pwa-192x192.png'))
+
+await sharp(Buffer.from(iconSvg))
+  .resize(512, 512)
+  .png()
+  .toFile(path.join(publicDir, 'pwa-512x512.png'))
+
+await sharp(Buffer.from(iconSvg))
+  .resize(180, 180)
+  .png()
+  .toFile(path.join(publicDir, 'apple-touch-icon.png'))
+
+console.log('PWA icons generated successfully.')
