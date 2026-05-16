@@ -1,4 +1,5 @@
 import NotificationPermissionCard from '../features/notifications/components/NotificationPermissionCard'
+import PwaInstallCard from '../features/pwa/components/PwaInstallCard'
 import ProfileStatsCard from '../features/stats/components/ProfileStatsCard'
 
 function ProfilePage() {
@@ -15,8 +16,9 @@ function ProfilePage() {
           </h1>
 
           <p className="max-w-2xl text-base leading-7 text-slate-300">
-            Здесь находятся настройки пользователя, уведомления, цели на день,
-            тема оформления и будущие интеграции с Telegram и календарями.
+            Здесь находятся настройки пользователя, уведомления, установка
+            приложения на телефон, цели на день, тема оформления и будущие
+            интеграции с Telegram и календарями.
           </p>
         </div>
 
@@ -43,6 +45,8 @@ function ProfilePage() {
 
             <div className="mt-6 space-y-5">
               <NotificationPermissionCard />
+
+              <PwaInstallCard />
 
               <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
                 <div className="flex items-center justify-between gap-4">
