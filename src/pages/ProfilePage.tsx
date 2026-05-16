@@ -1,3 +1,4 @@
+import AuthCard from '../features/auth/components/AuthCard'
 import NotificationPermissionCard from '../features/notifications/components/NotificationPermissionCard'
 import PwaInstallCard from '../features/pwa/components/PwaInstallCard'
 import ProfileStatsCard from '../features/stats/components/ProfileStatsCard'
@@ -16,9 +17,9 @@ function ProfilePage() {
           </h1>
 
           <p className="max-w-2xl text-base leading-7 text-slate-300">
-            Здесь находятся настройки пользователя, уведомления, установка
-            приложения на телефон, цели на день, тема оформления и будущие
-            интеграции с Telegram и календарями.
+            Здесь находятся аккаунт пользователя, настройки, уведомления,
+            установка приложения на телефон, цели на день, тема оформления и
+            будущие интеграции с Telegram и календарями.
           </p>
         </div>
 
@@ -44,6 +45,8 @@ function ProfilePage() {
             <h2 className="text-2xl font-semibold">Настройки</h2>
 
             <div className="mt-6 space-y-5">
+              <AuthCard />
+
               <NotificationPermissionCard />
 
               <PwaInstallCard />
@@ -98,7 +101,8 @@ function ProfilePage() {
                   <div>
                     <p className="font-medium text-white">Экспорт данных</p>
                     <p className="mt-1 text-sm text-slate-400">
-                      Позже добавим выгрузку задач, событий, заметок и фокус-сессий
+                      Позже добавим выгрузку задач, событий, заметок и
+                      фокус-сессий.
                     </p>
                   </div>
 
