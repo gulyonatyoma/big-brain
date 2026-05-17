@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import AuthSessionWatcher from '../../features/auth/components/AuthSessionWatcher'
 import EventCloudSyncWatcher from '../../features/events/components/EventCloudSyncWatcher'
 import FocusMiniIndicator from '../../features/focus/components/FocusMiniIndicator'
+import NoteCloudSyncWatcher from '../../features/notes/components/NoteCloudSyncWatcher'
 import EventReminderWatcher from '../../features/notifications/components/EventReminderWatcher'
 import TaskCloudSyncWatcher from '../../features/tasks/components/TaskCloudSyncWatcher'
 import MobileSidebar from './MobileSidebar'
@@ -13,6 +14,7 @@ function AppLayout() {
       <AuthSessionWatcher />
       <TaskCloudSyncWatcher />
       <EventCloudSyncWatcher />
+      <NoteCloudSyncWatcher />
 
       <MobileSidebar />
 
