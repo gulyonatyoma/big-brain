@@ -15,6 +15,17 @@ function NotesPage() {
   const navigate = useNavigate()
 
   useEffect(() => {
+    const noteIdFromUrl = searchParams.get('noteId')
+
+    if (!noteIdFromUrl) {
+      return
+    }
+
+    setSelectedNoteId(noteIdFromUrl)
+    navigate('/notes', { replace: true })
+  }, [navigate, searchParams])
+
+  useEffect(() => {
     if (searchParams.get('create') !== '1') {
       return
     }
