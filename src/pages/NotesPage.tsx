@@ -1,9 +1,52 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import NoteEditor from '../features/notes/components/NoteEditor'
 import NotesList from '../features/notes/components/NotesList'
+import { createNote } from '../features/notes/model/noteActions'
+
+const PROCESSED_NOTE_CREATE_KEY_PREFIX =
+  'big-brain-processed-note-create-request'
 
 function NotesPage() {
   const [selectedNoteId, setSelectedNoteId] = useState<string>('')
+  const [isCreatingNote, setIsCreatingNote] = useState(false)
+
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (searchParams.get('create') !== '1') {
+      return
+    }
+
+    const quickRequestId = searchParams.get('quick') ?? 'default'
+    const processedKey = `${PROCESSED_NOTE_CREATE_KEY_PREFIX}-${quickRequestId}`
+
+    if (window.sessionStorage.getItem(processedKey)) {
+      navigate('/notes', { replace: true })
+      return
+    }
+
+    window.sessionStorage.setItem(processedKey, '1')
+    navigate('/notes', { replace: true })
+
+    async function createQuickNote() {
+      setIsCreatingNote(true)
+
+      try {
+        const note = await createNote({
+          title: 'Новая заметка',
+          content: '',
+        })
+
+        setSelectedNoteId(note.id)
+      } finally {
+        setIsCreatingNote(false)
+      }
+    }
+
+    createQuickNote()
+  }, [navigate, searchParams])
 
   return (
     <main className="min-h-screen px-6 py-8 text-slate-100">
@@ -22,6 +65,12 @@ function NotesPage() {
             планов, черновиков и быстрых заметок. Все изменения сохраняются
             автоматически.
           </p>
+
+          {isCreatingNote ? (
+            <p className="mt-4 inline-flex rounded-full border border-violet-400/20 bg-violet-500/10 px-4 py-2 text-sm text-violet-200">
+              Создаём новую заметку...
+            </p>
+          ) : null}
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[320px_1fr]">

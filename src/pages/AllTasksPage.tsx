@@ -1,10 +1,22 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import CreateTaskForm from '../features/tasks/components/CreateTaskForm'
 import TaskList from '../features/tasks/components/TaskList'
 import TaskStatsCards from '../features/tasks/components/TaskStatsCards'
 
 function AllTasksPage() {
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false)
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (searchParams.get('create') !== '1') {
+      return
+    }
+
+    setIsCreateTaskOpen(true)
+    navigate('/tasks', { replace: true })
+  }, [navigate, searchParams])
 
   return (
     <main className="min-h-screen px-6 py-8 text-slate-100">

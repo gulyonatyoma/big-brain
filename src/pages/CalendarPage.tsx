@@ -1,10 +1,22 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import CalendarMonthGrid from '../features/events/components/CalendarMonthGrid'
 import CreateEventForm from '../features/events/components/CreateEventForm'
 import EventList from '../features/events/components/EventList'
 
 function CalendarPage() {
   const [isCreateEventOpen, setIsCreateEventOpen] = useState(false)
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (searchParams.get('create') !== '1') {
+      return
+    }
+
+    setIsCreateEventOpen(true)
+    navigate('/calendar', { replace: true })
+  }, [navigate, searchParams])
 
   return (
     <main className="min-h-screen px-6 py-8 text-slate-100">

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 type QuickAction = {
   title: string
   description: string
-  href: string
+  getHref: () => string
   icon: string
 }
 
@@ -12,19 +12,19 @@ const quickActions: QuickAction[] = [
   {
     title: 'Задача',
     description: 'Добавить новое дело',
-    href: '/tasks',
+    getHref: () => `/tasks?create=1&quick=${Date.now()}`,
     icon: '✓',
   },
   {
     title: 'Событие',
     description: 'Добавить в календарь',
-    href: '/calendar',
+    getHref: () => `/calendar?create=1&quick=${Date.now()}`,
     icon: '◷',
   },
   {
     title: 'Заметка',
     description: 'Записать мысль или идею',
-    href: '/notes',
+    getHref: () => `/notes?create=1&quick=${Date.now()}`,
     icon: '✎',
   },
 ]
@@ -62,7 +62,7 @@ function QuickCreateButton() {
 
   function handleActionClick(action: QuickAction) {
     setIsOpen(false)
-    navigate(action.href)
+    navigate(action.getHref())
   }
 
   return (
@@ -82,7 +82,7 @@ function QuickCreateButton() {
           <div className="space-y-2">
             {quickActions.map((action) => (
               <button
-                key={action.href}
+                key={action.title}
                 type="button"
                 onClick={() => handleActionClick(action)}
                 className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-left transition hover:border-violet-400/40 hover:bg-white/10"
