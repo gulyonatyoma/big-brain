@@ -6,6 +6,7 @@ import FocusMiniIndicator from '../../features/focus/components/FocusMiniIndicat
 import NoteCloudSyncWatcher from '../../features/notes/components/NoteCloudSyncWatcher'
 import EventReminderWatcher from '../../features/notifications/components/EventReminderWatcher'
 import TaskCloudSyncWatcher from '../../features/tasks/components/TaskCloudSyncWatcher'
+import CloudRealtimeWatcher from '../../shared/sync/components/CloudRealtimeWatcher'
 import MobileSidebar from './MobileSidebar'
 import Sidebar from './Sidebar'
 
@@ -17,6 +18,7 @@ function AppLayout() {
       <EventCloudSyncWatcher />
       <NoteCloudSyncWatcher />
       <FocusCloudSyncWatcher />
+      <CloudRealtimeWatcher />
 
       <MobileSidebar />
 
