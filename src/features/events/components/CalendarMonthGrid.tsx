@@ -4,6 +4,7 @@ import { db } from '../../../shared/db/db'
 import { deleteCalendarEvent } from '../model/eventActions'
 import { doesEventOccurOnDate } from '../model/eventDateUtils'
 import type { CalendarEvent } from '../types'
+import EditEventForm from './EditEventForm'
 
 function toDateString(date: Date) {
   const timezoneOffset = date.getTimezoneOffset() * 60 * 1000
@@ -141,6 +142,7 @@ function formatReminderLabel(event: CalendarEvent) {
 function CalendarMonthGrid() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [deletingEventId, setDeletingEventId] = useState<string>('')
+  const [editingEventId, setEditingEventId] = useState<string>('')
 
   const currentDate = new Date()
   const days = getCalendarDays(currentDate)
@@ -196,9 +198,18 @@ function CalendarMonthGrid() {
 
     try {
       await deleteCalendarEvent(event.id)
+
+      if (editingEventId === event.id) {
+        setEditingEventId('')
+      }
     } finally {
       setDeletingEventId('')
     }
+  }
+
+  function handleCloseSelectedDay() {
+    setSelectedDate(null)
+    setEditingEventId('')
   }
 
   return (
@@ -229,7 +240,10 @@ function CalendarMonthGrid() {
                 <button
                   key={day.date}
                   type="button"
-                  onClick={() => setSelectedDate(day.date)}
+                  onClick={() => {
+                    setSelectedDate(day.date)
+                    setEditingEventId('')
+                  }}
                   className={[
                     'min-h-28 rounded-2xl border p-3 text-left transition hover:border-violet-400/50 hover:bg-white/10',
                     isToday
@@ -284,10 +298,10 @@ function CalendarMonthGrid() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-8 backdrop-blur-sm">
           <div
             className="absolute inset-0"
-            onClick={() => setSelectedDate(null)}
+            onClick={handleCloseSelectedDay}
           />
 
-          <div className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-white/10 bg-slate-950 p-6 shadow-2xl shadow-black/50">
+          <div className="relative z-10 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-white/10 bg-slate-950 p-6 shadow-2xl shadow-black/50">
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm text-violet-300">События дня</p>
@@ -303,7 +317,7 @@ function CalendarMonthGrid() {
 
               <button
                 type="button"
-                onClick={() => setSelectedDate(null)}
+                onClick={handleCloseSelectedDay}
                 className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/10"
               >
                 Закрыть
@@ -320,6 +334,19 @@ function CalendarMonthGrid() {
                   const repeatLabel = formatRepeatLabel(event)
                   const reminderLabel = formatReminderLabel(event)
                   const isDeleting = deletingEventId === event.id
+                  const isEditing = editingEventId === event.id
+
+                  if (isEditing) {
+                    return (
+                      <div key={`${selectedDate}-${event.id}`}>
+                        <EditEventForm
+                          event={event}
+                          onSaved={() => setEditingEventId('')}
+                          onCancel={() => setEditingEventId('')}
+                        />
+                      </div>
+                    )
+                  }
 
                   return (
                     <article
@@ -361,14 +388,24 @@ function CalendarMonthGrid() {
                           ) : null}
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteEvent(event)}
-                          disabled={isDeleting}
-                          className="shrink-0 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {isDeleting ? 'Удаляем...' : 'Удалить'}
-                        </button>
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingEventId(event.id)}
+                            className="rounded-2xl border border-violet-400/20 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:bg-violet-500/20"
+                          >
+                            Изменить
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteEvent(event)}
+                            disabled={isDeleting}
+                            className="rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {isDeleting ? 'Удаляем...' : 'Удалить'}
+                          </button>
+                        </div>
                       </div>
                     </article>
                   )

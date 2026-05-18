@@ -1,12 +1,27 @@
 import { supabase } from '../../../shared/api/supabaseClient'
 import { db } from '../../../shared/db/db'
 import type { CalendarEvent, EventRepeatType } from '../types'
-import { createCloudEvent, deleteCloudEvent } from './cloud/eventCloudActions'
+import {
+  createCloudEvent,
+  deleteCloudEvent,
+  updateCloudEvent,
+} from './cloud/eventCloudActions'
 
 type CreateEventInput = {
   title: string
   description?: string
   date: string
+  startTime?: string
+  endTime?: string
+  repeatType?: EventRepeatType
+  repeatInterval?: number
+  reminderMinutesBefore?: number
+}
+
+type UpdateEventInput = {
+  title?: string
+  description?: string
+  date?: string
   startTime?: string
   endTime?: string
   repeatType?: EventRepeatType
@@ -63,6 +78,63 @@ export async function createCalendarEvent(input: CreateEventInput) {
   await db.events.add(event)
 
   return event
+}
+
+export async function updateCalendarEvent(
+  eventId: string,
+  input: UpdateEventInput,
+) {
+  const userId = await getAuthenticatedUserId()
+
+  if (userId) {
+    try {
+      const cloudEvent = await updateCloudEvent(eventId, input)
+
+      await db.events.put(cloudEvent)
+
+      return cloudEvent
+    } catch (error) {
+      console.warn('Failed to update cloud event, updating local event only', error)
+    }
+  }
+
+  const localUpdate: Partial<CalendarEvent> = {}
+
+  if (typeof input.title === 'string') {
+    localUpdate.title = input.title.trim()
+  }
+
+  if (typeof input.description === 'string') {
+    localUpdate.description = input.description.trim() || undefined
+  }
+
+  if (typeof input.date === 'string') {
+    localUpdate.date = input.date
+  }
+
+  if (typeof input.startTime === 'string') {
+    localUpdate.startTime = input.startTime || undefined
+  }
+
+  if (typeof input.endTime === 'string') {
+    localUpdate.endTime = input.endTime || undefined
+  }
+
+  if (input.repeatType) {
+    localUpdate.repeatType = input.repeatType
+  }
+
+  if (typeof input.repeatInterval === 'number') {
+    localUpdate.repeatInterval = Math.max(1, input.repeatInterval)
+  }
+
+  if (typeof input.reminderMinutesBefore === 'number') {
+    localUpdate.reminderMinutesBefore = input.reminderMinutesBefore
+  }
+
+  await db.events.update(eventId, localUpdate)
+
+  return db.events.get(eventId)
 }
 
 export async function deleteCalendarEvent(eventId: string) {

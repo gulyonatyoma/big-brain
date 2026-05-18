@@ -26,6 +26,17 @@ type CreateCloudEventInput = {
   reminderMinutesBefore?: number
 }
 
+type UpdateCloudEventInput = {
+  title?: string
+  description?: string
+  date?: string
+  startTime?: string
+  endTime?: string
+  repeatType?: EventRepeatType
+  repeatInterval?: number
+  reminderMinutesBefore?: number
+}
+
 function normalizeTime(time: string | null) {
   if (!time) {
     return undefined
@@ -97,6 +108,58 @@ export async function createCloudEvent(input: CreateCloudEventInput) {
           ? input.reminderMinutesBefore
           : null,
     })
+    .select('*')
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  return mapSupabaseEventToCalendarEvent(data as SupabaseEventRow)
+}
+
+export async function updateCloudEvent(
+  eventId: string,
+  input: UpdateCloudEventInput,
+) {
+  const payload: Record<string, unknown> = {}
+
+  if (typeof input.title === 'string') {
+    payload.title = input.title.trim()
+  }
+
+  if (typeof input.description === 'string') {
+    payload.description = input.description.trim() || null
+  }
+
+  if (typeof input.date === 'string') {
+    payload.date = input.date
+  }
+
+  if (typeof input.startTime === 'string') {
+    payload.start_time = input.startTime || null
+  }
+
+  if (typeof input.endTime === 'string') {
+    payload.end_time = input.endTime || null
+  }
+
+  if (input.repeatType) {
+    payload.repeat_type = input.repeatType
+  }
+
+  if (typeof input.repeatInterval === 'number') {
+    payload.repeat_interval = Math.max(1, input.repeatInterval)
+  }
+
+  if (typeof input.reminderMinutesBefore === 'number') {
+    payload.reminder_minutes_before = input.reminderMinutesBefore
+  }
+
+  const { data, error } = await supabase
+    .from('events')
+    .update(payload)
+    .eq('id', eventId)
     .select('*')
     .single()
 
