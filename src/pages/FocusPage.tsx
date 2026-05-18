@@ -3,7 +3,17 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import FocusTimer from '../features/focus/components/FocusTimer'
 import { useFocusTimerStore } from '../features/focus/model/focusTimerStore'
 
-const QUICK_FOCUS_DURATION_SECONDS = 25 * 60
+const DEFAULT_QUICK_FOCUS_DURATION_SECONDS = 25 * 60
+
+function getQuickFocusDuration(searchParams: URLSearchParams) {
+  const rawDurationSeconds = Number(searchParams.get('durationSeconds'))
+
+  if (!Number.isFinite(rawDurationSeconds) || rawDurationSeconds <= 0) {
+    return DEFAULT_QUICK_FOCUS_DURATION_SECONDS
+  }
+
+  return Math.min(rawDurationSeconds, 4 * 60 * 60)
+}
 
 function FocusPage() {
   const [searchParams] = useSearchParams()
@@ -12,6 +22,7 @@ function FocusPage() {
   const processedQuickFocusRef = useRef('')
 
   const status = useFocusTimerStore((state) => state.status)
+  const setSelectedTask = useFocusTimerStore((state) => state.setSelectedTask)
   const setDurationSeconds = useFocusTimerStore(
     (state) => state.setDurationSeconds,
   )
@@ -31,12 +42,27 @@ function FocusPage() {
     processedQuickFocusRef.current = quickRequestId
 
     if (status === 'idle') {
-      setDurationSeconds(QUICK_FOCUS_DURATION_SECONDS)
+      const taskId = searchParams.get('taskId') ?? ''
+      const taskTitle = searchParams.get('taskTitle') ?? ''
+      const durationSeconds = getQuickFocusDuration(searchParams)
+
+      if (taskId || taskTitle) {
+        setSelectedTask(taskId, taskTitle)
+      }
+
+      setDurationSeconds(durationSeconds)
       start()
     }
 
     navigate('/focus', { replace: true })
-  }, [navigate, searchParams, setDurationSeconds, start, status])
+  }, [
+    navigate,
+    searchParams,
+    setDurationSeconds,
+    setSelectedTask,
+    start,
+    status,
+  ])
 
   return (
     <main className="min-h-screen px-6 py-8 text-slate-100">
