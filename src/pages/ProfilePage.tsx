@@ -2,6 +2,7 @@ import AuthCard from '../features/auth/components/AuthCard'
 import NotificationPermissionCard from '../features/notifications/components/NotificationPermissionCard'
 import PwaInstallCard from '../features/pwa/components/PwaInstallCard'
 import ProfileStatsCard from '../features/stats/components/ProfileStatsCard'
+import SyncStatusCard from '../shared/sync/components/SyncStatusCard'
 
 function ProfilePage() {
   return (
@@ -17,9 +18,9 @@ function ProfilePage() {
           </h1>
 
           <p className="max-w-2xl text-base leading-7 text-slate-300">
-            Здесь находятся аккаунт пользователя, настройки, уведомления,
-            установка приложения на телефон, цели на день, тема оформления и
-            будущие интеграции с Telegram и календарями.
+            Здесь находятся аккаунт пользователя, статус облачной синхронизации,
+            настройки, уведомления, установка приложения на телефон, цели на
+            день, тема оформления и будущие интеграции с Telegram и календарями.
           </p>
         </div>
 
@@ -46,6 +47,8 @@ function ProfilePage() {
 
             <div className="mt-6 space-y-5">
               <AuthCard />
+
+              <SyncStatusCard />
 
               <NotificationPermissionCard />
 
