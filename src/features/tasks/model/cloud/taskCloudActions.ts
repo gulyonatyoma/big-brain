@@ -20,6 +20,13 @@ type CreateCloudTaskInput = {
   priority: TaskPriority
 }
 
+type UpdateCloudTaskInput = {
+  title?: string
+  description?: string
+  dueDate?: string
+  priority?: TaskPriority
+}
+
 function mapSupabaseTaskToTask(row: SupabaseTaskRow): Task {
   return {
     id: row.id,
@@ -70,6 +77,42 @@ export async function createCloudTask(input: CreateCloudTaskInput) {
       priority: input.priority,
       status: 'active',
     })
+    .select('*')
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  return mapSupabaseTaskToTask(data as SupabaseTaskRow)
+}
+
+export async function updateCloudTask(
+  taskId: string,
+  input: UpdateCloudTaskInput,
+) {
+  const payload: Record<string, unknown> = {}
+
+  if (typeof input.title === 'string') {
+    payload.title = input.title.trim()
+  }
+
+  if (typeof input.description === 'string') {
+    payload.description = input.description.trim() || null
+  }
+
+  if (typeof input.dueDate === 'string') {
+    payload.due_date = input.dueDate || null
+  }
+
+  if (input.priority) {
+    payload.priority = input.priority
+  }
+
+  const { data, error } = await supabase
+    .from('tasks')
+    .update(payload)
+    .eq('id', taskId)
     .select('*')
     .single()
 

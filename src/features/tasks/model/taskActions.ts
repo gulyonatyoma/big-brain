@@ -6,6 +6,7 @@ import {
   createCloudTask,
   deleteCloudTask,
   restoreCloudTask,
+  updateCloudTask,
 } from './cloud/taskCloudActions'
 
 type CreateTaskInput = {
@@ -13,6 +14,13 @@ type CreateTaskInput = {
   description?: string
   dueDate?: string
   priority: TaskPriority
+}
+
+type UpdateTaskInput = {
+  title?: string
+  description?: string
+  dueDate?: string
+  priority?: TaskPriority
 }
 
 async function getAuthenticatedUserId() {
@@ -49,6 +57,44 @@ export async function createTask(input: CreateTaskInput) {
   await db.tasks.add(task)
 
   return task
+}
+
+export async function updateTask(taskId: string, input: UpdateTaskInput) {
+  const userId = await getAuthenticatedUserId()
+
+  if (userId) {
+    try {
+      const cloudTask = await updateCloudTask(taskId, input)
+
+      await db.tasks.put(cloudTask)
+
+      return cloudTask
+    } catch (error) {
+      console.warn('Failed to update cloud task, updating local task only', error)
+    }
+  }
+
+  const localUpdate: Partial<Task> = {}
+
+  if (typeof input.title === 'string') {
+    localUpdate.title = input.title.trim()
+  }
+
+  if (typeof input.description === 'string') {
+    localUpdate.description = input.description.trim() || undefined
+  }
+
+  if (typeof input.dueDate === 'string') {
+    localUpdate.dueDate = input.dueDate || undefined
+  }
+
+  if (input.priority) {
+    localUpdate.priority = input.priority
+  }
+
+  await db.tasks.update(taskId, localUpdate)
+
+  return db.tasks.get(taskId)
 }
 
 export async function completeTask(taskId: string) {
