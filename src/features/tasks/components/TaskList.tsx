@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../../shared/db/db'
 import { getTodayDateString } from '../../../shared/lib/dateTime'
@@ -96,6 +96,25 @@ function matchesFilter(task: Task, filter: TaskFilter) {
   return true
 }
 
+function matchesSearch(task: Task, searchQuery: string) {
+  const normalizedQuery = searchQuery.trim().toLowerCase()
+
+  if (!normalizedQuery) {
+    return true
+  }
+
+  const searchableText = [
+    task.title,
+    task.description ?? '',
+    task.dueDate ?? '',
+    priorityLabels[task.priority],
+  ]
+    .join(' ')
+    .toLowerCase()
+
+  return searchableText.includes(normalizedQuery)
+}
+
 function sortTasks(tasks: Task[]) {
   const priorityWeight: Record<TaskPriority, number> = {
     high: 3,
@@ -126,6 +145,7 @@ function sortTasks(tasks: Task[]) {
 
 function TaskList() {
   const [activeFilter, setActiveFilter] = useState<TaskFilter>('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [editingTaskId, setEditingTaskId] = useState('')
   const [deletingTaskId, setDeletingTaskId] = useState('')
   const [completingTaskId, setCompletingTaskId] = useState('')
@@ -138,18 +158,28 @@ function TaskList() {
 
   const safeTasks = tasks ?? []
 
-  const visibleTasks = safeTasks.filter((task) => {
-    return matchesFilter(task, activeFilter)
-  })
+  const visibleTasks = useMemo(() => {
+    return safeTasks.filter((task) => {
+      return matchesFilter(task, activeFilter) && matchesSearch(task, searchQuery)
+    })
+  }, [activeFilter, safeTasks, searchQuery])
 
   const filterCounts: Record<TaskFilter, number> = {
-    all: safeTasks.length,
-    today: safeTasks.filter((task) => matchesFilter(task, 'today')).length,
-    overdue: safeTasks.filter((task) => matchesFilter(task, 'overdue')).length,
-    upcoming: safeTasks.filter((task) => matchesFilter(task, 'upcoming')).length,
-    'without-date': safeTasks.filter((task) =>
-      matchesFilter(task, 'without-date'),
-    ).length,
+    all: safeTasks.filter((task) => matchesSearch(task, searchQuery)).length,
+    today: safeTasks.filter((task) => {
+      return matchesFilter(task, 'today') && matchesSearch(task, searchQuery)
+    }).length,
+    overdue: safeTasks.filter((task) => {
+      return matchesFilter(task, 'overdue') && matchesSearch(task, searchQuery)
+    }).length,
+    upcoming: safeTasks.filter((task) => {
+      return matchesFilter(task, 'upcoming') && matchesSearch(task, searchQuery)
+    }).length,
+    'without-date': safeTasks.filter((task) => {
+      return (
+        matchesFilter(task, 'without-date') && matchesSearch(task, searchQuery)
+      )
+    }).length,
   }
 
   async function handleCompleteTask(taskId: string) {
@@ -186,6 +216,11 @@ function TaskList() {
     }
   }
 
+  function handleClearSearch() {
+    setSearchQuery('')
+    setEditingTaskId('')
+  }
+
   if (!tasks) {
     return (
       <div className="rounded-2xl border border-white/10 bg-black/20 p-6 text-slate-400">
@@ -196,6 +231,40 @@ function TaskList() {
 
   return (
     <div className="space-y-4">
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+        <label className="mb-2 block text-sm text-slate-400">
+          Поиск по задачам
+        </label>
+
+        <div className="flex flex-col gap-3 md:flex-row">
+          <input
+            value={searchQuery}
+            onChange={(event) => {
+              setSearchQuery(event.target.value)
+              setEditingTaskId('')
+            }}
+            className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-slate-100 outline-none placeholder:text-slate-500 focus:border-violet-400/60"
+            placeholder="Например: созвон, купить, проект, high..."
+          />
+
+          {searchQuery.trim() ? (
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="shrink-0 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/10"
+            >
+              Очистить
+            </button>
+          ) : null}
+        </div>
+
+        {searchQuery.trim() ? (
+          <p className="mt-3 text-sm text-slate-500">
+            Найдено задач: {visibleTasks.length}
+          </p>
+        ) : null}
+      </div>
+
       <div className="overflow-x-auto pb-1">
         <div className="flex min-w-max gap-2">
           {(Object.keys(filterLabels) as TaskFilter[]).map((filter) => {
@@ -232,7 +301,7 @@ function TaskList() {
         </div>
       ) : visibleTasks.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-white/10 p-8 text-center text-slate-400">
-          В этом фильтре задач нет
+          По этому запросу задач нет
         </div>
       ) : (
         <div className="space-y-3">
