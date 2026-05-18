@@ -1,10 +1,37 @@
 import AuthCard from '../features/auth/components/AuthCard'
+import { useAuthStore } from '../features/auth/model/authStore'
 import NotificationPermissionCard from '../features/notifications/components/NotificationPermissionCard'
 import PwaInstallCard from '../features/pwa/components/PwaInstallCard'
 import ProfileStatsCard from '../features/stats/components/ProfileStatsCard'
 import SyncStatusCard from '../shared/sync/components/SyncStatusCard'
 
+function getUserInitial(email?: string) {
+  if (!email) {
+    return 'Г'
+  }
+
+  return email.trim().charAt(0).toUpperCase()
+}
+
 function ProfilePage() {
+  const user = useAuthStore((state) => state.user)
+  const isAuthLoading = useAuthStore((state) => state.isAuthLoading)
+
+  const userEmail = user?.email
+  const userInitial = getUserInitial(userEmail)
+
+  const profileTitle = isAuthLoading
+    ? 'Загрузка...'
+    : userEmail
+      ? 'Аккаунт подключён'
+      : 'Гость'
+
+  const profileSubtitle = isAuthLoading
+    ? 'Проверяем сессию пользователя'
+    : userEmail
+      ? userEmail
+      : 'Локальный режим без облачной синхронизации'
+
   return (
     <main className="min-h-screen px-6 py-8 text-slate-100">
       <section className="mx-auto flex max-w-6xl flex-col gap-6">
@@ -27,14 +54,17 @@ function ProfilePage() {
         <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
             <div className="mb-6 flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-500 text-2xl font-bold text-white">
-                А
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-violet-500 text-2xl font-bold text-white">
+                {userInitial}
               </div>
 
-              <div>
-                <h2 className="text-2xl font-semibold">Артём</h2>
-                <p className="mt-1 text-sm text-slate-400">
-                  Пользователь приложения
+              <div className="min-w-0">
+                <h2 className="text-2xl font-semibold">
+                  {profileTitle}
+                </h2>
+
+                <p className="mt-1 truncate text-sm text-slate-400">
+                  {profileSubtitle}
                 </p>
               </div>
             </div>
