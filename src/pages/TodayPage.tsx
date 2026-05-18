@@ -41,6 +41,10 @@ function TodayPage() {
     }
   }
 
+  function handleStartQuickFocus() {
+    navigate(`/focus?quickFocus=1&quick=${Date.now()}`)
+  }
+
   return (
     <main className="min-h-screen px-6 py-8 text-slate-100">
       <section className="mx-auto flex max-w-6xl flex-col gap-6">
@@ -62,7 +66,7 @@ function TodayPage() {
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row lg:shrink-0">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap lg:max-w-md lg:justify-end lg:shrink-0">
               <button
                 type="button"
                 onClick={() => setIsCreateTodayTaskOpen(true)}
@@ -86,6 +90,14 @@ function TodayPage() {
                 className="rounded-2xl border border-sky-400/20 bg-sky-500/10 px-5 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isCreatingTodayNote ? 'Создаём...' : '+ Быстрая заметка'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleStartQuickFocus}
+                className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-5 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20"
+              >
+                + Фокус 25 мин
               </button>
             </div>
           </div>

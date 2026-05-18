@@ -1,6 +1,43 @@
+import { useEffect, useRef } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import FocusTimer from '../features/focus/components/FocusTimer'
+import { useFocusTimerStore } from '../features/focus/model/focusTimerStore'
+
+const QUICK_FOCUS_DURATION_SECONDS = 25 * 60
 
 function FocusPage() {
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+
+  const processedQuickFocusRef = useRef('')
+
+  const status = useFocusTimerStore((state) => state.status)
+  const setDurationSeconds = useFocusTimerStore(
+    (state) => state.setDurationSeconds,
+  )
+  const start = useFocusTimerStore((state) => state.start)
+
+  useEffect(() => {
+    if (searchParams.get('quickFocus') !== '1') {
+      return
+    }
+
+    const quickRequestId = searchParams.get('quick') ?? 'default'
+
+    if (processedQuickFocusRef.current === quickRequestId) {
+      return
+    }
+
+    processedQuickFocusRef.current = quickRequestId
+
+    if (status === 'idle') {
+      setDurationSeconds(QUICK_FOCUS_DURATION_SECONDS)
+      start()
+    }
+
+    navigate('/focus', { replace: true })
+  }, [navigate, searchParams, setDurationSeconds, start, status])
+
   return (
     <main className="min-h-screen px-6 py-8 text-slate-100">
       <section className="mx-auto flex max-w-6xl flex-col gap-6">
