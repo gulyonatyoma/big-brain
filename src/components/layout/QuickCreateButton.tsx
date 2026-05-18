@@ -27,6 +27,12 @@ const quickActions: QuickAction[] = [
     getHref: () => `/notes?create=1&quick=${Date.now()}`,
     icon: '✎',
   },
+  {
+    title: 'Фокус 25 мин',
+    description: 'Сразу запустить таймер',
+    getHref: () => `/focus?quickFocus=1&quick=${Date.now()}`,
+    icon: '◉',
+  },
 ]
 
 function QuickCreateButton() {
