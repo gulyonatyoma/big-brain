@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../../shared/db/db'
 import { deleteCalendarEvent } from '../model/eventActions'
 import type { CalendarEvent } from '../types'
+import EditEventForm from './EditEventForm'
 
 function formatDate(date: string) {
   return new Intl.DateTimeFormat('ru-RU', {
@@ -152,6 +153,7 @@ function getMatchLabel(event: CalendarEvent, searchQuery: string) {
 
 function EventList() {
   const [searchQuery, setSearchQuery] = useState('')
+  const [editingEventId, setEditingEventId] = useState('')
   const [deletingEventId, setDeletingEventId] = useState('')
 
   const events = useLiveQuery(async () => {
@@ -175,7 +177,14 @@ function EventList() {
   }, [events, searchQuery])
 
   async function handleDeleteEvent(event: CalendarEvent) {
-    const confirmed = window.confirm(`Удалить событие “${event.title}”?`)
+    const repeatLabel = formatRepeatLabel(event)
+
+    const message =
+      event.repeatType === 'none'
+        ? `Удалить событие “${event.title}”?`
+        : `Удалить регулярное событие “${event.title}”? Будет удалена вся серия: ${repeatLabel}.`
+
+    const confirmed = window.confirm(message)
 
     if (!confirmed) {
       return
@@ -185,6 +194,10 @@ function EventList() {
 
     try {
       await deleteCalendarEvent(event.id)
+
+      if (editingEventId === event.id) {
+        setEditingEventId('')
+      }
     } finally {
       setDeletingEventId('')
     }
@@ -192,6 +205,7 @@ function EventList() {
 
   function handleClearSearch() {
     setSearchQuery('')
+    setEditingEventId('')
   }
 
   if (!events) {
@@ -212,7 +226,10 @@ function EventList() {
         <div className="flex flex-col gap-3 md:flex-row">
           <input
             value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
+            onChange={(event) => {
+              setSearchQuery(event.target.value)
+              setEditingEventId('')
+            }}
             className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-slate-100 outline-none placeholder:text-slate-500 focus:border-violet-400/60"
             placeholder="Например: созвон, тренировка, 15:30, каждую неделю..."
           />
@@ -246,8 +263,21 @@ function EventList() {
       ) : (
         <div className="space-y-3">
           {visibleEvents.map((event: CalendarEvent) => {
+            const isEditing = editingEventId === event.id
             const isDeleting = deletingEventId === event.id
             const matchLabel = getMatchLabel(event, searchQuery)
+
+            if (isEditing) {
+              return (
+                <div key={event.id}>
+                  <EditEventForm
+                    event={event}
+                    onSaved={() => setEditingEventId('')}
+                    onCancel={() => setEditingEventId('')}
+                  />
+                </div>
+              )
+            }
 
             return (
               <article
@@ -293,14 +323,24 @@ function EventList() {
                     ) : null}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteEvent(event)}
-                    disabled={isDeleting}
-                    className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {isDeleting ? 'Удаляем...' : 'Удалить'}
-                  </button>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingEventId(event.id)}
+                      className="rounded-xl border border-violet-400/20 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:bg-violet-500/20"
+                    >
+                      Изменить
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteEvent(event)}
+                      disabled={isDeleting}
+                      className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isDeleting ? 'Удаляем...' : 'Удалить'}
+                    </button>
+                  </div>
                 </div>
               </article>
             )
