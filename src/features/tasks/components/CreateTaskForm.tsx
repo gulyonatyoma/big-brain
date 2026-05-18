@@ -5,6 +5,7 @@ import type { TaskPriority } from '../types'
 type CreateTaskFormProps = {
   onCreated?: () => void
   onCancel?: () => void
+  defaultDueDate?: string
 }
 
 const priorityOptions: Array<{
@@ -33,17 +34,27 @@ const priorityOptions: Array<{
   },
 ]
 
-function CreateTaskForm({ onCreated, onCancel }: CreateTaskFormProps) {
+function CreateTaskForm({
+  onCreated,
+  onCancel,
+  defaultDueDate = '',
+}: CreateTaskFormProps) {
   const priorityDropdownRef = useRef<HTMLDivElement | null>(null)
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [dueDate, setDueDate] = useState('')
+  const [dueDate, setDueDate] = useState(defaultDueDate)
   const [priority, setPriority] = useState<TaskPriority>('medium')
   const [isPriorityOpen, setIsPriorityOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const selectedPriority = priorityOptions.find((option) => option.value === priority)
+  const selectedPriority = priorityOptions.find((option) => {
+    return option.value === priority
+  })
+
+  useEffect(() => {
+    setDueDate(defaultDueDate)
+  }, [defaultDueDate])
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -82,7 +93,7 @@ function CreateTaskForm({ onCreated, onCancel }: CreateTaskFormProps) {
 
       setTitle('')
       setDescription('')
-      setDueDate('')
+      setDueDate(defaultDueDate)
       setPriority('medium')
       setIsPriorityOpen(false)
 
