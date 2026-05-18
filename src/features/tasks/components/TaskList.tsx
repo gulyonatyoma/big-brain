@@ -497,13 +497,13 @@ function TaskList() {
       </div>
 
       {focusTask ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-8 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto bg-slate-950/85 px-4 py-12 backdrop-blur-xl sm:items-center sm:py-8">
           <div
             className="absolute inset-0"
             onClick={handleCloseFocusPicker}
           />
 
-          <div className="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-slate-950 p-6 shadow-2xl shadow-black/50">
+          <div className="relative z-[91] mt-6 w-full max-w-md rounded-[2rem] border border-emerald-400/20 bg-slate-950 p-6 shadow-2xl shadow-black/70 ring-1 ring-white/10 sm:mt-0">
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm text-emerald-300">Фокус по задаче</p>
