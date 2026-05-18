@@ -8,6 +8,7 @@ import EventReminderWatcher from '../../features/notifications/components/EventR
 import TaskCloudSyncWatcher from '../../features/tasks/components/TaskCloudSyncWatcher'
 import CloudRealtimeWatcher from '../../shared/sync/components/CloudRealtimeWatcher'
 import MobileSidebar from './MobileSidebar'
+import QuickCreateButton from './QuickCreateButton'
 import Sidebar from './Sidebar'
 
 function AppLayout() {
@@ -30,6 +31,7 @@ function AppLayout() {
         </div>
       </div>
 
+      <QuickCreateButton />
       <FocusMiniIndicator />
       <EventReminderWatcher />
     </div>
