@@ -1,10 +1,11 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { createCalendarEvent } from '../model/eventActions'
 import type { EventRepeatType } from '../types'
 
 type CreateEventFormProps = {
   onCreated?: () => void
   onCancel?: () => void
+  defaultDate?: string
 }
 
 const repeatOptions: Array<{
@@ -36,10 +37,14 @@ const repeatUnitLabels: Record<EventRepeatType, string> = {
   monthly: 'мес.',
 }
 
-function CreateEventForm({ onCreated, onCancel }: CreateEventFormProps) {
+function CreateEventForm({
+  onCreated,
+  onCancel,
+  defaultDate = '',
+}: CreateEventFormProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [date, setDate] = useState('')
+  const [date, setDate] = useState(defaultDate)
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime] = useState('')
   const [repeatType, setRepeatType] = useState<EventRepeatType>('none')
@@ -48,6 +53,10 @@ function CreateEventForm({ onCreated, onCancel }: CreateEventFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const isRepeating = repeatType !== 'none'
+
+  useEffect(() => {
+    setDate(defaultDate)
+  }, [defaultDate])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -74,7 +83,7 @@ function CreateEventForm({ onCreated, onCancel }: CreateEventFormProps) {
 
       setTitle('')
       setDescription('')
-      setDate('')
+      setDate(defaultDate)
       setStartTime('')
       setEndTime('')
       setRepeatType('none')
@@ -186,6 +195,7 @@ function CreateEventForm({ onCreated, onCancel }: CreateEventFormProps) {
           <div className="mb-4 flex items-center justify-between gap-4">
             <div>
               <p className="font-medium text-white">Регулярность</p>
+
               <p className="mt-1 text-sm text-slate-400">
                 Можно настроить событие раз в 2 недели, раз в 3 дня и так далее.
               </p>
