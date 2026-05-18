@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -7,6 +7,8 @@ import { getTodayDateString } from '../../../shared/lib/dateTime'
 import { completeTask, deleteTask } from '../model/taskActions'
 import type { Task, TaskPriority } from '../types'
 import EditTaskForm from './EditTaskForm'
+
+type TaskFilter = 'all' | 'today' | 'overdue' | 'upcoming' | 'without-date'
 
 type FocusDurationOption = {
   label: string
@@ -44,6 +46,14 @@ const priorityClasses: Record<TaskPriority, string> = {
   high: 'border-red-400/20 bg-red-500/10 text-red-200',
 }
 
+const filterLabels: Record<TaskFilter, string> = {
+  all: 'Все',
+  today: 'Сегодня',
+  overdue: 'Просроченные',
+  upcoming: 'Ближайшие',
+  'without-date': 'Без даты',
+}
+
 function formatDate(date?: string) {
   if (!date) {
     return 'Без даты'
@@ -56,6 +66,81 @@ function formatDate(date?: string) {
   }).format(new Date(date))
 }
 
+function getDateStringWithOffset(daysOffset: number) {
+  const date = new Date()
+  date.setDate(date.getDate() + daysOffset)
+
+  const timezoneOffset = date.getTimezoneOffset() * 60 * 1000
+
+  return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 10)
+}
+
+function getTaskFilterLabel(task: Task) {
+  const today = getTodayDateString()
+
+  if (!task.dueDate) {
+    return 'Без даты'
+  }
+
+  if (task.dueDate < today) {
+    return 'Просрочено'
+  }
+
+  if (task.dueDate === today) {
+    return 'Сегодня'
+  }
+
+  return formatDate(task.dueDate)
+}
+
+function matchesFilter(task: Task, filter: TaskFilter) {
+  const today = getTodayDateString()
+  const nextSevenDays = getDateStringWithOffset(7)
+
+  if (filter === 'all') {
+    return true
+  }
+
+  if (filter === 'today') {
+    return task.dueDate === today
+  }
+
+  if (filter === 'overdue') {
+    return Boolean(task.dueDate && task.dueDate < today)
+  }
+
+  if (filter === 'upcoming') {
+    return Boolean(
+      task.dueDate && task.dueDate > today && task.dueDate <= nextSevenDays,
+    )
+  }
+
+  if (filter === 'without-date') {
+    return !task.dueDate
+  }
+
+  return true
+}
+
+function matchesSearch(task: Task, searchQuery: string) {
+  const normalizedQuery = searchQuery.trim().toLowerCase()
+
+  if (!normalizedQuery) {
+    return true
+  }
+
+  const searchableText = [
+    task.title,
+    task.description ?? '',
+    task.dueDate ?? '',
+    priorityLabels[task.priority],
+  ]
+    .join(' ')
+    .toLowerCase()
+
+  return searchableText.includes(normalizedQuery)
+}
+
 function sortTasks(tasks: Task[]) {
   const priorityWeight: Record<TaskPriority, number> = {
     high: 3,
@@ -66,6 +151,14 @@ function sortTasks(tasks: Task[]) {
   return [...tasks].sort((a, b) => {
     if (a.dueDate && b.dueDate && a.dueDate !== b.dueDate) {
       return a.dueDate.localeCompare(b.dueDate)
+    }
+
+    if (a.dueDate && !b.dueDate) {
+      return -1
+    }
+
+    if (!a.dueDate && b.dueDate) {
+      return 1
     }
 
     if (priorityWeight[a.priority] !== priorityWeight[b.priority]) {
@@ -101,196 +194,50 @@ function getCustomFocusSeconds(customFocusMinutes: string) {
   return Math.round(limitedMinutes * 60)
 }
 
-type TaskSectionProps = {
-  title: string
-  description: string
-  emptyText: string
-  tasks: Task[]
-  variant?: 'default' | 'danger'
-  editingTaskId: string
-  deletingTaskId: string
-  completingTaskId: string
-  onEditTask: (taskId: string) => void
-  onCancelEdit: () => void
-  onCompleteTask: (taskId: string) => void
-  onDeleteTask: (task: Task) => void
-  onOpenFocusPicker: (task: Task) => void
-}
-
-function TaskSection({
-  title,
-  description,
-  emptyText,
-  tasks,
-  variant = 'default',
-  editingTaskId,
-  deletingTaskId,
-  completingTaskId,
-  onEditTask,
-  onCancelEdit,
-  onCompleteTask,
-  onDeleteTask,
-  onOpenFocusPicker,
-}: TaskSectionProps) {
-  return (
-    <section className="space-y-3">
-      <div>
-        <h3
-          className={[
-            'text-lg font-semibold',
-            variant === 'danger' ? 'text-red-100' : 'text-white',
-          ].join(' ')}
-        >
-          {title}
-        </h3>
-
-        <p className="mt-1 text-sm text-slate-400">{description}</p>
-      </div>
-
-      {tasks.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/10 p-5 text-center text-sm text-slate-400">
-          {emptyText}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {tasks.map((task) => {
-            const isEditing = editingTaskId === task.id
-            const isDeleting = deletingTaskId === task.id
-            const isCompleting = completingTaskId === task.id
-
-            if (isEditing) {
-              return (
-                <div key={task.id}>
-                  <EditTaskForm
-                    task={task}
-                    onSaved={onCancelEdit}
-                    onCancel={onCancelEdit}
-                  />
-                </div>
-              )
-            }
-
-            return (
-              <article
-                key={task.id}
-                className={[
-                  'rounded-2xl border p-5',
-                  variant === 'danger'
-                    ? 'border-red-400/20 bg-red-500/10'
-                    : 'border-white/10 bg-black/20',
-                ].join(' ')}
-              >
-                <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
-                  <div className="min-w-0">
-                    <div className="mb-2 flex flex-wrap items-center gap-2">
-                      <span
-                        className={[
-                          'rounded-full border px-3 py-1 text-xs font-medium',
-                          priorityClasses[task.priority],
-                        ].join(' ')}
-                      >
-                        {priorityLabels[task.priority]}
-                      </span>
-
-                      <span
-                        className={[
-                          'text-xs',
-                          variant === 'danger'
-                            ? 'text-red-100/70'
-                            : 'text-slate-500',
-                        ].join(' ')}
-                      >
-                        {variant === 'danger'
-                          ? `Просрочено: ${formatDate(task.dueDate)}`
-                          : 'Сегодня'}
-                      </span>
-                    </div>
-
-                    <h4 className="text-lg font-semibold text-white">
-                      {task.title}
-                    </h4>
-
-                    {task.description ? (
-                      <p className="mt-2 text-sm leading-6 text-slate-400">
-                        {task.description}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <div className="flex shrink-0 flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onOpenFocusPicker(task)}
-                      className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20"
-                    >
-                      Фокус
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => onEditTask(task.id)}
-                      className="rounded-xl border border-violet-400/20 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:bg-violet-500/20"
-                    >
-                      Изменить
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => onCompleteTask(task.id)}
-                      disabled={isCompleting}
-                      className="rounded-xl bg-violet-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {isCompleting ? 'Готовим...' : 'Готово'}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => onDeleteTask(task)}
-                      disabled={isDeleting}
-                      className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {isDeleting ? 'Удаляем...' : 'Удалить'}
-                    </button>
-                  </div>
-                </div>
-              </article>
-            )
-          })}
-        </div>
-      )}
-    </section>
-  )
-}
-
-function TodayTaskList() {
+function TaskList() {
   const navigate = useNavigate()
 
+  const [activeFilter, setActiveFilter] = useState<TaskFilter>('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [editingTaskId, setEditingTaskId] = useState('')
   const [deletingTaskId, setDeletingTaskId] = useState('')
   const [completingTaskId, setCompletingTaskId] = useState('')
   const [focusTask, setFocusTask] = useState<Task | null>(null)
   const [customFocusMinutes, setCustomFocusMinutes] = useState('25')
 
-  const customFocusSeconds = getCustomFocusSeconds(customFocusMinutes)
-
-  const tasksData = useLiveQuery(async () => {
-    const today = getTodayDateString()
-
+  const tasks = useLiveQuery(async () => {
     const activeTasks = await db.tasks.where('status').equals('active').toArray()
 
-    const overdueTasks = activeTasks.filter((task) => {
-      return Boolean(task.dueDate && task.dueDate < today)
-    })
-
-    const todayTasks = activeTasks.filter((task) => {
-      return task.dueDate === today
-    })
-
-    return {
-      overdueTasks: sortTasks(overdueTasks),
-      todayTasks: sortTasks(todayTasks),
-    }
+    return sortTasks(activeTasks)
   }, [])
+
+  const safeTasks = tasks ?? []
+
+  const visibleTasks = useMemo(() => {
+    return safeTasks.filter((task) => {
+      return matchesFilter(task, activeFilter) && matchesSearch(task, searchQuery)
+    })
+  }, [activeFilter, safeTasks, searchQuery])
+
+  const filterCounts: Record<TaskFilter, number> = {
+    all: safeTasks.filter((task) => matchesSearch(task, searchQuery)).length,
+    today: safeTasks.filter((task) => {
+      return matchesFilter(task, 'today') && matchesSearch(task, searchQuery)
+    }).length,
+    overdue: safeTasks.filter((task) => {
+      return matchesFilter(task, 'overdue') && matchesSearch(task, searchQuery)
+    }).length,
+    upcoming: safeTasks.filter((task) => {
+      return matchesFilter(task, 'upcoming') && matchesSearch(task, searchQuery)
+    }).length,
+    'without-date': safeTasks.filter((task) => {
+      return (
+        matchesFilter(task, 'without-date') && matchesSearch(task, searchQuery)
+      )
+    }).length,
+  }
+
+  const customFocusSeconds = getCustomFocusSeconds(customFocusMinutes)
 
   async function handleCompleteTask(taskId: string) {
     setCompletingTaskId(taskId)
@@ -356,6 +303,11 @@ function TodayTaskList() {
     }
 
     handleStartFocus(customFocusSeconds)
+  }
+
+  function handleClearSearch() {
+    setSearchQuery('')
+    setEditingTaskId('')
   }
 
   const focusDurationModal = focusTask ? (
@@ -448,67 +400,198 @@ function TodayTaskList() {
     </div>
   ) : null
 
-  if (!tasksData) {
+  if (!tasks) {
     return (
       <div className="rounded-2xl border border-white/10 bg-black/20 p-6 text-slate-400">
-        Загружаем задачи на сегодня...
+        Загружаем задачи...
       </div>
-    )
-  }
-
-  const hasNoTasks =
-    tasksData.overdueTasks.length === 0 && tasksData.todayTasks.length === 0
-
-  if (hasNoTasks) {
-    return (
-      <>
-        <div className="rounded-2xl border border-dashed border-white/10 p-8 text-center text-slate-400">
-          На сегодня задач нет, и просроченных задач тоже нет
-        </div>
-
-        {focusDurationModal ? createPortal(focusDurationModal, document.body) : null}
-      </>
     )
   }
 
   return (
     <>
-      <div className="space-y-6">
-        <TaskSection
-          title="Просроченные"
-          description="Эти задачи уже должны были быть закрыты. Лучше разобрать их первыми."
-          emptyText="Просроченных задач нет"
-          tasks={tasksData.overdueTasks}
-          variant="danger"
-          editingTaskId={editingTaskId}
-          deletingTaskId={deletingTaskId}
-          completingTaskId={completingTaskId}
-          onEditTask={setEditingTaskId}
-          onCancelEdit={() => setEditingTaskId('')}
-          onCompleteTask={handleCompleteTask}
-          onDeleteTask={handleDeleteTask}
-          onOpenFocusPicker={handleOpenFocusPicker}
-        />
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+          <label className="mb-2 block text-sm text-slate-400">
+            Поиск по задачам
+          </label>
 
-        <TaskSection
-          title="На сегодня"
-          description="Основной список задач, которые запланированы на текущий день."
-          emptyText="Задач на сегодня нет"
-          tasks={tasksData.todayTasks}
-          editingTaskId={editingTaskId}
-          deletingTaskId={deletingTaskId}
-          completingTaskId={completingTaskId}
-          onEditTask={setEditingTaskId}
-          onCancelEdit={() => setEditingTaskId('')}
-          onCompleteTask={handleCompleteTask}
-          onDeleteTask={handleDeleteTask}
-          onOpenFocusPicker={handleOpenFocusPicker}
-        />
+          <div className="flex flex-col gap-3 md:flex-row">
+            <input
+              value={searchQuery}
+              onChange={(event) => {
+                setSearchQuery(event.target.value)
+                setEditingTaskId('')
+              }}
+              className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-slate-100 outline-none placeholder:text-slate-500 focus:border-violet-400/60"
+              placeholder="Например: созвон, купить, проект, high..."
+            />
+
+            {searchQuery.trim() ? (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="shrink-0 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/10"
+              >
+                Очистить
+              </button>
+            ) : null}
+          </div>
+
+          {searchQuery.trim() ? (
+            <p className="mt-3 text-sm text-slate-500">
+              Найдено задач: {visibleTasks.length}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="overflow-x-auto pb-1">
+          <div className="flex min-w-max gap-2">
+            {(Object.keys(filterLabels) as TaskFilter[]).map((filter) => {
+              const isActive = activeFilter === filter
+
+              return (
+                <button
+                  key={filter}
+                  type="button"
+                  onClick={() => {
+                    setActiveFilter(filter)
+                    setEditingTaskId('')
+                  }}
+                  className={[
+                    'rounded-2xl border px-4 py-2 text-sm font-semibold transition',
+                    isActive
+                      ? 'border-violet-400/40 bg-violet-500 text-white'
+                      : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10',
+                  ].join(' ')}
+                >
+                  {filterLabels[filter]}
+                  <span className="ml-2 text-xs opacity-75">
+                    {filterCounts[filter]}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {safeTasks.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-white/10 p-8 text-center text-slate-400">
+            Пока задач нет
+          </div>
+        ) : visibleTasks.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-white/10 p-8 text-center text-slate-400">
+            По этому запросу задач нет
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {visibleTasks.map((task: Task) => {
+              const isEditing = editingTaskId === task.id
+              const isDeleting = deletingTaskId === task.id
+              const isCompleting = completingTaskId === task.id
+              const dateLabel = getTaskFilterLabel(task)
+              const isOverdue = Boolean(
+                task.dueDate && task.dueDate < getTodayDateString(),
+              )
+
+              if (isEditing) {
+                return (
+                  <div key={task.id}>
+                    <EditTaskForm
+                      task={task}
+                      onSaved={() => setEditingTaskId('')}
+                      onCancel={() => setEditingTaskId('')}
+                    />
+                  </div>
+                )
+              }
+
+              return (
+                <article
+                  key={task.id}
+                  className="rounded-2xl border border-white/10 bg-black/20 p-5"
+                >
+                  <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+                    <div className="min-w-0">
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <span
+                          className={[
+                            'rounded-full border px-3 py-1 text-xs font-medium',
+                            priorityClasses[task.priority],
+                          ].join(' ')}
+                        >
+                          {priorityLabels[task.priority]}
+                        </span>
+
+                        <span
+                          className={[
+                            'text-xs',
+                            isOverdue ? 'text-red-200' : 'text-slate-500',
+                          ].join(' ')}
+                        >
+                          {dateLabel}
+                        </span>
+                      </div>
+
+                      <h3 className="text-lg font-semibold text-white">
+                        {task.title}
+                      </h3>
+
+                      {task.description ? (
+                        <p className="mt-2 text-sm leading-6 text-slate-400">
+                          {task.description}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenFocusPicker(task)}
+                        className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20"
+                      >
+                        Фокус
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setEditingTaskId(task.id)}
+                        className="rounded-xl border border-violet-400/20 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:bg-violet-500/20"
+                      >
+                        Изменить
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleCompleteTask(task.id)}
+                        disabled={isCompleting}
+                        className="rounded-xl bg-violet-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isCompleting ? 'Готовим...' : 'Готово'}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteTask(task)}
+                        disabled={isDeleting}
+                        className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isDeleting ? 'Удаляем...' : 'Удалить'}
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        )}
       </div>
 
-      {focusDurationModal ? createPortal(focusDurationModal, document.body) : null}
+      {focusDurationModal
+        ? createPortal(focusDurationModal, document.body)
+        : null}
     </>
   )
 }
 
-export default TodayTaskList
+export default TaskList
